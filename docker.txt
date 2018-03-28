@@ -1,0 +1,39 @@
+
+docker pull xxxx
+
+docker run SOME_IMAGE
+
+# List containers
+docker ps
+
+# List containers including ended ones
+docker ps -a
+
+# Stop a container
+docker stop CONTAINER_ID
+
+# Stop all containers
+docker stop $(docker ps -q)
+
+# Remove a container with its id
+docker rm CONTAINER_ID
+
+# Remove all containers which have ended
+docker rm $(docker ps -a -q -f status=exited)
+
+# Remove an image
+docker rmi IMAGE_ID
+
+# Docker image build reference
+https://docs.docker.com/engine/reference/builder/
+
+# network
+# List networks
+docker network ls
+
+# Create a network
+docker network create NETWORK_NAME
+
+docker network inspect NETWORK_NAME
+
+# Docker compose: A tool to manage several docker images working together as an app
