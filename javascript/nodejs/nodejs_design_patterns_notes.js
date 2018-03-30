@@ -1,3 +1,5 @@
+// Reading notes for <Node.js Design Patterns 2nd edition.pdf>
+
 // Need to install modules: npm install async
 
 // reactor pattern: 
@@ -286,9 +288,96 @@ new RandomStream().pipe(new ObjectStream());
 //          Infrastructure controls the extension by loading, installing or executing the new specified component. 
 //          module.exports = () => { return { method: 'method'; }} plugin = require('the_plugin'); app[plugin.method]();
 
+// Chapter 8: Universal JavaScript for Web Applications
+// Sharing code with browser: Environment may not be the same. Nodejs has no DOM or long-living views, browser no filesystem or start new process. 
+//     And browser may not support ES2015 features, better to use ES5
+// Universal Module Definition: https://github.com/umdjs/umd
+// Webpack: Allows to write modules using the nodejs module conventions, and compile into a bundle (a single JS file) that contains 
+//     all the dependencies the module needs for working in the browser.
+// Fundamentals of cross-platform development
+// * Runtime code branching: Recognize the environment and switch dynamically the implementation. 
+//       Generic approaches involve checking global variables that are available only on Nodejs or browser
+// * Build-time code branching: Use Webpack to remove, at build time, all the parts of the code that we want only the server to use. 
+//       Use DefinePlugin and UglifyJsPlugin to remove dead code
+// * Module swapping: Define module for server and client, and use NormalModuleReplacementPlugin to choose which one to use
+// Useful design patterns for cross-platform development:
+//     Strategy and template: Define common steps of an algorithm, allowing some of its parts to be replaced
+//     Adapter: Swap an entire component. Proxy, Observer, DI and service locator
+// React 
+// react-router library: for component navigation
+// express: web server      ejs: template engine
+// Server-side rendering: ReactDom.renderToString() renders any react component to a HTML code string. 
 
+// Chapter 9: Advanced asynchronous recipes
+// Requiring asynchronously initialized modules: require() works synchronously and module.exports cannot be set asynchronously
+// Preinitialization queues: If a module is initialized asynchronously, queue every operation until the module is fully initialized.
+// Asynchronous request batching: When invoking an async function while there is another one pending, attach callback to the already running operation.
+// Asynchronous request caching: As soon as a request completes, store the result in the cache. Next time the API is invoked, retrieve the result from the cache.
+//     Work together with batching. Always use async way to return result. LRU caching. Shared cache store to manage distributed computing (Redis, Memcached)
+// Batching and caching with promises: Return a promise
+// Running CPU-bound tasks: 
+//     Interleave the execution of a long-running synchronous task with setImmediate()
+//         setImmediate: queue the function behind whatever I/O event callbacks that are already in the event queue
+//         process.nextTick: effectively queue the function at the head of the event queue so that it executes immediately after the current function completes
+//     Using multiple processes:
+const child_process = require('child_process');
+let child = child_process.fork('child.js');
+child.on('message', m => console.debug("Received message from child: " + m.from));
+child.send( { from: "Parent message"} );
 
+// Chapter10: Scalability and architectural patterns
+// Three dimensions of scalability
+//     x-axis: Cloning. 
+//     y-axis: Decomposing by service/functionality. Creating different, standalone applications, each with its own codebase, database, UI, etc.
+//     z-axis: Splitting by data partition. Mainly used in databases and also takes the name of horizontal partitioning or sharding. 
+// Cloning and load balancing: 
+//     Vertical scaling (adding more resources to a single machine) Horizontal scaling (adding more machines to the infrastructure)
+//     cluster module: simplifies the forking of new instances of the same application and automatically distributes incoming connections across them
+//         cluster.isMaster cluster.fork cluster.on('exit', (worker, code) => { handle child crash })
+//     Zero-downtime restart: Restarting the workers one at a time
+//     Dealing with stateful communications
+//         Sharing the state across multiple instances. Use a shared database
+//         Sticky load balancing: Load balancer always routes all of the requests associated with a session to the same instance of the app. 
+//             Problem is that it nullifies most of the advantages of having a redundant system
+//     Scaling with a reverse proxy: Can distribute the load across several machines, not just several processes; support sticky load balancing;
+//             can route request to any server, regardless of its programming language or platform; more powerful load balancing algorithms; more services
+//     Use a service registry: Use a central repository to store an always up-to-date view of the servers and the services available in a system
+//     Peer-to-peer load balancing
+// Decomposing complex applications
+//     Avoid writing big applications; make each program do one thing well
+//     Microservice architecture: Split a complex application by creating several small, self-contained services
+//     Pros: Every service is expendable; Reusability across platforms and languages; a way to scale the application;     Cons: complexity
+//     Integration patterns
+//         API proxy/gateway: A server that proxies the communications between a client and a set of remote APIs; 
+//             provides a single access point for multiple API endpoints
+//     API orchestration: An API orchestration layer is an abstraction layer that takes generically-modeled data elements and/or features and
+//         prepares them in a more specific way for a targeted developer or application. Another common operation is data aggregation, 
+//         combing data from different services into a single response. 
+//     Message broker
 
+// Chapter 11: Messaging and integration patterns
+// Fundamentals of a messaging system
+//     The direction of the communication, which can be one-way only or a request/reply exchange
+//     The purpose of the message, which also determines its content
+//     The timing of the message, which can be sent and received immediately or at a later time (asynchronously)
+//     The delivery of the message, which can happen directly or via a broker
+// Message types: command message, event message, document (data) message
+// Asynchronous messaging and queues; peer-to-peer or broker-based messaging; publish/subscribe pattern (loosely coupled)
+// Use Redis as a message broker to publish/subscribe messages; 0MQ a messaging library
+// Durable subscriber: A subscriber that is able to always reliably receive all the messages, even those sent when it is not listening for them
+// AMQP: an open standard protocol. Essential components:
+//     Queue: the data structure responsible for storing the messages consumed by the clients
+//         Queue can be Durable (queue is auto recreated if the broker restarts. only messages marked as persistent are saved and restored);
+//         Exclusive (bound to only one particular subscriber connection); Auto-delete (queue is deleted when the last subscriber disconnects)
+//     Exchange: Where the message is published. Routing algorithms:
+//         Direct (matching an entire routing key); Topic (using a pattern matching the routing key); Fanout (broadcast to all)
+//     Binding: The link between exchanges and queues. Also defines the routing key or the pattern to filter messages
+// Pipelines and task distribution patterns: 
+//     0MQ PUSH/PULL sockets: Messages always from push to pull
+//         Ventilator =(push)(pull)=> worker =(push)(pull)=> Sink (Result collector)
+// Request/Reply patterns
+//     Correlation identifier: Marking each request with an ID, which is then attached to the response by the receiver
+//     Return address: The information which allows the replier to send the response back to the original sender of the request
 
 
 
