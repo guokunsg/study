@@ -1,0 +1,115 @@
+https://en.bitcoin.it/wiki/Script
+OP_DUP          : Duplicate the top stack item
+                x => x x
+OP_VERIFY       : Marks transaction as invalid if top stack value is not true. The top stack is removed
+                true/false => nothing/fail
+OP_EQUAL        : Returns 1 if the inputs are exactly equal, 0 otherwise
+                x1  x2 => true/false
+OP_EQUALVERIFY  : Same as OP_EQUAL, but runs OP_VERIFY afterward
+                x1 x2 => nothing/fail
+OP_CHECKSIG     : Entire transaction's outputs, inputs, and script are hashed. 
+                sig pubkey => true/false
+OP_CHECKLOCKTIMEVERIFY : Marks transaction as invalid if the top stack item is greater than the transaction's nLockTime field,
+                         otherwise script evaluation continues as though an OP_NOP was executed. BIP 0065
+                x => x/fail
+OP_CHECKSEQUENCEVERIFY : Marks transaction as invalid if the relative lock time of the input is not equal to or longer than the value of the top stack item. 
+                x => x/fail
+OP_CHECKMULTISIG : Compares the first signature against each public key until it finds an ECDSA match. 
+                   Starting with subsequent public key, it compares the second signature against each remaining public key until it finds an ECDSA match.
+                   The process is repeated until all signatures have been checked or not enough public keys remain to produce a successful result. 
+                   All signatures need to match a public key. 
+                   Signatures must be placed in the scriptSig using the same order as their corresponding public keys were placed in the scriptPubKey. 
+                   Due to a bug, one extra unused value is removed from the stack
+                x sig1 sig2 <number of signatures> pub1 pub2 <number of pub keys> => true/false
+OP_IF           : If the top stack value is not false, the statement is executed. Top stack value is removed
+                <expression> if statements else statements endif
+OP_HASH160      : Input is hashed twice: SHA256 then RIPEMD160
+                in => hash
+
+
+Standard transaction to bitcoin address (pay-to-pubkey-hash, P2PKH)
+scriptPubKey: OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+scriptSig: <sig> <pubKey>
+execution: <sig> <pubKey> | OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+=> <sig><pubkey><pubkey> | OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+=> <sig><pubkey><pubkey><hashed_pubkey> | OP_EQUALVERIFY OP_CHECKSIG
+=> <sig><pubkey> | OP_CHECKSIG
+=> true
+
+Multisignture
+scriptPubKey: M <pubkey1> <pubkey2> ... N OP_CHECKMULTISIG      (N is the total number of listed public keys, M is the threshold of required signatures)
+scriptSig: 0 <sig1> <sig2>      (0 is added due to some bug)
+
+Pay-to-script-hash (P2SH)
+scriptPubKey: OP_HASH160 <expected_hash> OP_EQUALVERIFY <pubKey> OP_CHECKSIG
+scriptSig: <sig><hash pre-image>
+
+Hashed Timelock Contracts (HTLC BIP 0199)
+Form:
+    OP_IF
+        [HASHOP] <digest> OP_EQUALVERIFY OP_DUP OP_HASH160 <seller pubkey hash>            
+    OP_ELSE
+        <num> [TIMEOUTOP] OP_DROP OP_DUP OP_HASH160 <buyer pubkey hash>
+    OP_ENDIF
+    OP_EQUALVERIFY
+    OP_CHECKSIG
+(My implementation. To be confirmed)
+scriptPubKey: OP_HASH256 <preimage_hash> OP_EQUALVERIFY OP_IF 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+scriptSig: <sig><pubkey><preimage>
+execution: <sig><pubkey><preimage> | OP_HASH256 <preimage_hash> OP_EQUALVERIFY OP_IF 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+=> <sig><pubkey><hashed_preimage><preimage_hash> | OP_EQUALVERIFY OP_IF 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+true => <sig><pubkey><OP_TRUE> | OP_IF 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+     => <sig><pubkey> OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+     => P2PKH
+false => <sig><pubkey>1000 | OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+      (after 1000 transactions) => <sig><pubkey>1000 | OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+      => <sig><pubkey> | OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+      => P2PKH
+
+Freezing funds until a time in the future
+scriptPubkey: <expiry_time> OP_CHECKLOCKTIMEVERIFY OP_DROP OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+scriptSig: <sig><pubKey>
+execution: <sig><pubKey><expiry_time> | OP_CHECKLOCKTIMEVERIFY OP_DROP OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+=> <sig><pubKey><expiry_time> | OP_DROP OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+=> <sig><pubKey> | OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+=> (same as before)
+
+Obsolete pay-to-pubkey transaction: old style without hashing the pubkey. Long unlock script data. 
+scriptPubKey: <pubKey> OP_CHECKSIG      scriptSig: <sig>
+
+Provably unspendable/prunable: No one can spend the output
+scriptPubKey: OP_RETURN {zero or more operations}
+
+Anyone-can-spend: 
+scriptPubKey: (empty)                   scriptSig: OP_TRUE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
