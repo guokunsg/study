@@ -53,17 +53,25 @@ Form:
     OP_ENDIF
     OP_EQUALVERIFY
     OP_CHECKSIG
-(My implementation. To be confirmed)
-scriptPubKey: OP_HASH256 <preimage_hash> OP_EQUALVERIFY OP_IF 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+(My implementation. To be confirmed. Maybe should check time first?)
+scriptPubKey: 
+OP_HASH256 <preimage_hash> OP_EQUAL
+OP_IF
+OP_DUP OP_HASH160 <seller_pubkey_hash>
+OP_ELSE
+1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_DUP OP_HASH160 <buyer_pubkey_hash>
+OP_ENDIF
+OP_EQUALVERIFY OP_CHECKSIG
 scriptSig: <sig><pubkey><preimage>
-execution: <sig><pubkey><preimage> | OP_HASH256 <preimage_hash> OP_EQUALVERIFY OP_IF 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
-=> <sig><pubkey><hashed_preimage><preimage_hash> | OP_EQUALVERIFY OP_IF 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
-true => <sig><pubkey><OP_TRUE> | OP_IF 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
-     => <sig><pubkey> OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+execution: <sig><pubkey><preimage> | OP_HASH256 <preimage_hash> OP_EQUAL OP_IF OP_DUP OP_HASH160 <seller_pubkey_hash> OP_ELSE 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_DUP OP_HASH160 <buyer_pubkey_hash> OP_ENDIF OP_EQUALVERIFY OP_CHECKSIG
+=> <sig><pubkey><hashed_preimage><preimage_hash> | OP_EQUAL OP_IF OP_DUP OP_HASH160 <seller_pubkey_hash> OP_ELSE 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_DUP OP_HASH160 <buyer_pubkey_hash> OP_ENDIF OP_EQUALVERIFY OP_CHECKSIG
+true => <sig><pubkey><OP_TRUE> | OP_IF OP_DUP OP_HASH160 <seller_pubkey_hash> OP_ELSE 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_DUP OP_HASH160 <buyer_pubkey_hash> OP_ENDIF OP_EQUALVERIFY OP_CHECKSIG
+     => <sig><pubkey> | OP_DUP OP_HASH160 <seller_pubkey_hash> OP_EQUALVERIFY OP_CHECKSIG
      => P2PKH
-false => <sig><pubkey>1000 | OP_CHECKSEQUENCEVERIFY OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
-      (after 1000 transactions) => <sig><pubkey>1000 | OP_DROP OP_ELSE OP_ENDIF OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
-      => <sig><pubkey> | OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG
+false => <sig><pubkey><OP_FALSE> | OP_IF OP_DUP OP_HASH160 <seller_pubkey_hash> OP_ELSE 1000 OP_CHECKSEQUENCEVERIFY OP_DROP OP_DUP OP_HASH160 <buyer_pubkey_hash> OP_ENDIF OP_EQUALVERIFY OP_CHECKSIG
+      => <sig><pubkey> 1000 | OP_CHECKSEQUENCEVERIFY OP_DROP OP_DUP OP_HASH160 <buyer_pubkey_hash> OP_EQUALVERIFY OP_CHECKSIG
+      (after 1000 transactions) => <sig><pubkey> 1000 | OP_DROP OP_DUP OP_HASH160 <buyer_pubkey_hash> OP_EQUALVERIFY OP_CHECKSIG
+      => <sig><pubkey> | OP_DUP OP_HASH160 <buyer_pubkey_hash> OP_EQUALVERIFY OP_CHECKSIG
       => P2PKH
 
 Freezing funds until a time in the future
