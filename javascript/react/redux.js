@@ -60,7 +60,28 @@
 // 如果一个组件既有UI又有业务逻辑: 将它拆分成下面的结构：外面是一个容器组件，里面包了一个UI组件。前者负责与外部的通信，将数据传给后者，由后者渲染出视图
 // React-Redux规定，所有的UI组件都由用户提供，容器组件则是由React-Redux自动生成。也就是说，用户负责视觉层，状态管理则是全部交给它
 
-
+// Basic redux
+const reducer = (state = {count: 0}, action) => {
+    switch (action.type){
+      case 'INCREASE': return {count: state.count + 1};
+      case 'DECREASE': return {count: state.count - 1};
+      default: return state;
+    }
+  }
+  
+  const actions = {
+    increase: () => ({type: 'INCREASE'}),
+    decrease: () => ({type: 'DECREASE'})
+  }
+  
+  const store = createStore(reducer);
+  store.subscribe(() =>
+    console.log(store.getState())
+  );
+  
+  store.dispatch(actions.increase()) // {count: 1}
+  store.dispatch(actions.increase()) // {count: 2}
+  store.dispatch(actions.increase()) // {count: 3}
 
 
 
