@@ -1,0 +1,140 @@
+RDBMS               MongoDB
+Database            Database
+Table               Collection
+Tuple/Row           Document
+Column              Field
+Table Join          Embedded Documents
+Primary Key         Primary Key (Default key _id provided by MongoDB itself)
+
+Data types:
+    String, Integer, Boolean, Double, Arrays, Timestamp, Null, Date, Binary data, Regular expression
+    Min/Max keys: Used to compare a value against the lowest and highest BSON elements
+    Object: Used for embedded documents. Object ID: Document's ID
+    Symbol: Used identically to a string. Reserved for languages that use a specific symbol type
+    Code: Javascript code
+
+_id is a 12 bytes hexadecimal number which assures the uniqueness of every document
+
+use DATABASE_NAME
+    create database if it doesn't exist, or return the existing database
+db.dropDatabase(): drop a existing database
+    use the database, then db.dropDatabase()
+db.createCollection(name, options[optional]): Create collection
+    eg: db.createCollection("mycol", {capped: true, autoIndexId: true, size: 6142800, max: 10000})
+db.COLLECTION_NAME.drop(): drop a collection
+db.COLLECTION_NAME.insert(document): Insert data
+db.COLLECTION_NAME.save(document): Insert data
+    eg: db.mycol.insert({ _id: ObjectId(7df78ad8902c), title: 'MongoDB Overview' })
+        db.mycol.insert([ { title: 'MongoDB Overview' }, { title: 'NoSQL Database' }])
+    insert and save difference: For save, if _id provided and record exists, do update
+db.COLLECTION_NAME.find(query, projection[optional]): Query data
+    Equality:           {<key>:<value}              = where <key> = <value>
+    Less than:          {<key>:{$lt:<value>}}       = where <key> < <value>
+    Less than equals:   {<key>:{$lte:<value>}}      = Where <key> <= <value>
+    Greater than:       {<key>:{$gt:<value}}        = where <key> > <value>
+    Greater than equals:{<key>:{$gte:<value>}}      = where <key> >= <value>
+    AND:                $and: [{condition1}, {condition2}] 
+    OR:                 $or: [{condition1}, {condition2}]
+    projection:         {<key>: 1}                 The list of fields to retrieve
+    eg: db.mycol.find({"likes" : {$lt: 50}})        where likes < 50
+        db.mycol.find({"likes" : {$gt: 50}, $or: [{"title" : "MongoDB"}, {"title": {"Tutorial}}]}) // Combined and/or
+        db.mycol.find({}, {'title':1})
+        db.mycol.find({}, {'title':1, _id:0}) // By default _id is always displayed. Set 0 to not display
+    find(query).pretty(): format data
+    find(query).limit(NUMBER): limit records retrieved
+    find(query).skip(NUMBER): skip a number of documents
+    find(query).sort({KEY:1}): sort the result. 1 for ascending order, -1 for descending. 
+                               If not set sort, results are displayed in ascending by default
+db.COLLECTION_NAME.update(SELECTION_CRITERIA, UPDATED_DATA): Update record
+db.COLLECTION_NAME.save(document): Replace the existing document
+    By default, MongoDB updates only a single document. To update multiple, set parameter 'multi'
+    eg: db.mycol.update({'title': 'MongoDB'}, {$set: {'title': 'MongoDB'}}, {multi: true})
+db.COLLECTION_NAME.remove(DELETION_CRITERIA): Remove a document
+    eg: db.mycol.remove({'title': 'MongoDB'})
+        db.mycol.remove({'title': 'MongoDB'}, 1)        'justOne' option parameter to indicate only delete 1
+        db.mycol.remove()                               Remove all documents
+db.COLLECTION_NAME.ensureIndex({KEY:1}): For efficient resolution of queries
+    options: background, unique, name, dropDups, sparse, expireAfterSeconds, v, weights, default_language, language_overrides
+    eg: db.mycol.ensureIndex({'title': 1, "description': -1})
+db.COLLECTION_NAME.aggregate(AGGREGATE_OPERATION): 
+    Aggregations operations process data records and return computed results.
+    Operations: $sum, $avg, $min, $max, $push, $addToSet, $first, $last
+    eg: db.mycol.aggregate([{$group: {_id:'$BY_USER', num_tutorial:  {$sum: 1}}}]) 
+        // Above same as: select BY_USER, count(*) from mycol group by BY_USER
+
+Replication:
+    Replication is the process of synchronizing data across multiple servers
+    mongod --port "PORT" --dbpath "YOUR_DB_DATA_PATH" --replSet "REPLICA_SET_INSTANCE_NAME"
+    eg: mongod --port 27017 --dbpath "D:\mongodb\data" --replSet rs0
+        Mongo client: rs.add(INSTANCE_NAME)
+Sharding:
+    Sharding is the process of storing data records across multiple machines
+
+Relationship:
+    Reference by ObjectId
+        eg: "address_ids": [ObjectId("52ffc4a5d85242602e000000")]
+    Use DBRefs:
+        $ref: The collection of the referenced document
+        $id: _id field of the referenced document
+        $db: optional field and contains the name of the database in which the referenced document lies
+        eg: "address" : { "$ref": "address_home", "$id": ObjectId("52ffc4a5d85242602e000000")}
+Covered queries:
+    All the fields in the query are part of an index and all fields returned are in the same index
+    Indexes are present in RAM, faster than fetching by scanning documents
+Analyzing Queries:
+    find().explain() find().hint()
+Atomic Operations:
+    MongoDB does not support multi-document atomic transactions
+Indexing Sub-Document Fields:
+    eg: "address: " { "city": "Singapore", "postcode": "123456"} // Address is a sub document
+    db.users.ensureIndex({"address.city":1}) // Index on the sub document
+ObjectId: 12-byte BSON type having the following structure 
+    The first 4 bytes representing the seconds since the unix epoch
+    The next 3 bytes are the machine identifier
+    The next 2 bytes consists of process id
+    The last 3 bytes are a random counter value
+MapReduce:
+    db.collection.mapReduce(
+        function() { emit(key,value); },  // map function
+        function(key,values) { return reduceFunction }, // reduce function
+        {   out: collection,    // specifies the location of the map-reduce query result
+            query: document,    // specifies the optional selection criteria for selecting documents
+            sort: document,     // specifies the optional sort criteria
+            limit: number       // specifies the optional maximum number of documents to be returned
+        }
+    )
+Text Search:
+    ensureIndex({key: "text"})  // Creating Text Index
+    find({ $text { $search: "text" }})
+    getIndexes() dropIndex(name)
+Regular Expression:
+    find({ key: {$regex: "expression" }})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
