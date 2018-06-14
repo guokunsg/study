@@ -15,13 +15,11 @@ contract HTLC {
             let hashed := keccak256(p, 32)
             if eq(hashed, 0xfe07bfcf888c2aad5f4586a3371ae0b7a23d7829c6142817829ed5f28d381da4) {
                 selfdestruct(0x7D551397F79A2988B064AFd0EFeBEe802C7721Bc)
-                stop
             }
 
             // Check time
             if gt(timestamp, 0x5ac9e88f) {
                 selfdestruct(0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe)
-                stop
             }
             revert(0, 0)
         }
