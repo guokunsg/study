@@ -1,3 +1,4 @@
+# okHttp
 # Usage
 * OkHttpClient client = 
     new OkHttpClient.Builder()
@@ -29,17 +30,6 @@
 
 # Design 
 ## Flow
-Request.Builder
-       ↓
-Dispatcher (ApplicationInterceptorChain)
-       ↓
-HttpEngine [Cache]
-       ↓
-ConnectionPool [Connection] 
-       ↓
-  [Rote] [Platform] 
-Data    →     [Server (Socket)]
-## More details
 [OkHttpClient.Builder]
        ↓ build()
   [OkHttpClient]
@@ -60,8 +50,36 @@ Data    →     [Server (Socket)]
            [CallServerInterceptor]    // Network IO
                      ↓
                  [Response]
+* Resume from break point: Http Range:bytes=XXXX
 
- * Resume from break point: Http Range:bytes=XXXX
+# Retrofit
+* Usage:
+    interface ApiService // Define network interface
+        @GET("some_end_point") // RESTful API
+        Call<SomeData> getSomeData(); 
+    Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(baseUrl)
+                //.addCallAdapterFactory(RxJavaCallAdapterFactory.create()) // This allows to convert Call to Rx Observable
+                .addConverterFactory(GsonConverterFactory.create()) // Convert JSON ResponseBody to java object
+                .build();
+    ApiService svc = retrofit.create(ApiService.class);
+    Call<SomeData> call = svc.getSomeData();
+    Response<SomeData> res = call.execute(); // Synchronize or call.enqueue(callback) for asynchronous
+* addCallAdapterFactory(RxJavaCallAdapterFactory.create()) 
+    allows to convert the return value from Call<Data> to Rx Observable<Data> in ApiService.
+    eg: Observable<SomeData> getSomeData() in ApiService
+* addConverterFactory(GsonConverterFactory.create())
+    Convert the ResponseBody to Response<Data>
+* Flow:
+    - Build Retrofit
+        Facade pattern: Create Retrofit object
+    - Retrofit.create(service_interface) 
+        Dynamic Proxy pattern: return Proxy.newProxyInstance with InvocationHandler to intercept the function call in service interface. 
+        Create and cache ServiceMethod, make okhttp and use callAdapter to convert the response
+    - ServiceMethod intercepts the function call with annotation and build okhttp request. 
+    - CallAdapter convert the okhttp response to the return type in service interface. Also manages thread to run the call
+        Adpater pattern, Strategy pattern, Decorator pattern
+    - Converter convert the service interface return type to user defined type
 
 
 
@@ -72,6 +90,4 @@ Data    →     [Server (Socket)]
 
 
 
-
-
-
+ 
