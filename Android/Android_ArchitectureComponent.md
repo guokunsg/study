@@ -4,13 +4,15 @@ https://developer.android.com/topic/libraries/architecture/
 * Lifecycle
     - a class that holds the information about the lifecycle state of a component (like an activity or a fragment) and allows other objects to observe this state.
     - A class can monitor the component's lifecycle status by adding annotations to its methods.
-    - State and events
-        [INITIALIZED] -(ON_CREATE)-> [CREATED] -(ON_START)-> [STARTED] -(ON_RESUME)-> [RESUMED]
+    - State and events  
+        [INITIALIZED] -(ON_CREATE)-> [CREATED] -(ON_START)-> [STARTED] -(ON_RESUME)-> [RESUMED]  
         [DESTROYED]  <-(ON_DESTROY)- [CREATED] <-(ON_STOP)-  [STARTED] <-(ON_PAUSE)-  [RESUMED]
-    - A class can monitor the component's lifecycle status by adding annotations to its methods.
+    - A class can monitor the component's lifecycle status by adding annotations to its methods. 
+        ```
         public class MyObserver implements LifecycleObserver
             @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
             public void connectListener()
+        ```
 * LifecycleOwner
     - LifecycleOwner is a single method interface that denotes that the class has a Lifecycle.
     - one method getLifecycle(), which must be implemented by the class
@@ -19,13 +21,16 @@ https://developer.android.com/topic/libraries/architecture/
     - LiveData considers an observer in an active state if its lifecycle is in the STARTED or RESUMED state.
     - You can register an observer paired with an object that implements the LifecycleOwner interface
     - Make sure to store LiveData objects that update the UI in ViewModel objects not Activity or Fragment
+        ```
         public class NameViewModel extends ViewModel
             private MutableLiveData<String> mCurrentName;
             public MutableLiveData<String> getCurrentName()
                 if (mCurrentName == null) 
                     mCurrentName = new MutableLiveData<String>();
-                return mCurrentName;
+                return mCurrentName; 
+        ```
     - In most cases, an app component’s onCreate() method is the right place to begin observing a LiveData object
+        ```
         public class NameActivity extends AppCompatActivity
             private NameViewModel mModel;
             @Override
@@ -36,22 +41,25 @@ https://developer.android.com/topic/libraries/architecture/
                         mNameTextView.setText(newName); // Update the UI, in this case, a TextView.
                 // Observe the LiveData, passing in this activity as the LifecycleOwner and the observer.
                 mModel.getCurrentName().observe(this, nameObserver);
-    - Update LiveData objects: setValue(T) and postValue(T)
+        ```
+    - Update LiveData objects: setValue(T) and postValue(T)  
         mModel.getCurrentName().setValue(anotherName);
     - Extend LiveData
+        ```
         public class StockLiveData extends LiveData<BigDecimal>
             // called when there is an active observer. Need to start observing data updates from this method.
             @Override protected void onActive()
             // called when there is no active observers. Can stop data updating
             @Override protected void onInactive() {
             // Need to setValue(T) to update the value of the LiveData instance and notifies any active observers about the change.
+        ```
 # ViewModel
 * Designed to store and manage UI-related data in a lifecycle conscious way. 
 * allows data to survive configuration changes such as screen rotations.
 * A ViewModel must never reference a view, Lifecycle, or any class that may hold a reference to the activity context.
 * ViewModel remains in memory until the Lifecycle it's scoped to goes away permanently
-* Fragments can share a ViewModel using their activity scope to handle the communication    
-    getActivity() to create ViewModelProvider, fragments receive the same SharedViewModel instance, which is scoped to the activity.
+* Fragments can share a ViewModel using their activity scope to handle the communication  
+    * Use getActivity() to create ViewModelProvider, fragments receive the same SharedViewModel instance, which is scoped to the activity.
 * Replacing Loaders with ViewModel and Room
 
 # WorkManager
@@ -63,29 +71,37 @@ https://developer.android.com/topic/libraries/architecture/
     - WorkManager: enqueues and manages the work requests.
     - WorkStatus: contains information about a particular task.
     - Constraints: specify constraints on when the task should run.
-    public class CompressWorker extends Worker
-        @Override public Worker.Result doWork()
-            ... return Result.SUCCESS; // RETRY to retry later; FAILURE for error
+    ```
+    public class CompressWorker extends Worker  
+        @Override public Worker.Result doWork()  
+            ... return Result.SUCCESS; // Return RETRY to retry later; FAILURE for error
     OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(CompressWorker.class)
         .setConstraints(myConstraints).build(); 
     WorkManager.getInstance().enqueue(workRequest);
     WorkManager.getInstance().getStatusById(workRequest.getId())
-        .observe(lifecycleOwner, workStatus -> { if (workStatus.getState().isFinished()) ...  }) // Observe the result
+        .observe(lifecycleOwner, workStatus -> { 
+            if (workStatus.getState().isFinished()) ...  
+            }) // Observe the result
     Constraints myConstraints = new Constraints.Builder() // Can set constraint before request build
         .setRequiresDeviceIdle(true).setRequiresCharging(true).build();   
     WorkManager.getInstance().cancelWorkById(workRequest.getId()); // Cancel
     PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
         PhotoCheckWorker.class, 12, TimeUnit.HOURS).build();
-    WorkManager.getInstance() // Chained tasks. WorkManager.beginWith() returns WorkContinuation object;
-        .beginWith(workA).then(workB).then(workC).enqueue();
-    WorkContinuation chain3 = WorkContinuation.combine(chain1, chain2).then(workE); // Can combine WorkContinuation chain
+    WorkManager.getInstance() // Chained tasks. 
+        .beginWith(workA) // WorkManager.beginWith() returns WorkContinuation object;
+        .then(workB).then(workC).enqueue();
+    WorkContinuation chain3 = WorkContinuation
+        .combine(chain1, chain2).then(workE); // Can combine WorkContinuation chain
+    ```
 # Data binding library
 * Bind UI components in your layouts to data sources in your app using a declarative format rather than programmatically.
+    ```
     <Layout>
         <data><variable name="user" type="com.databinding.User" /></data>
         <TextView android:text="@{viewmodel.userName}" />
     </Layout>
     ViewDataBinding binding = DataBindingUtil.inflate(inflater,R.layout.fragment_blank, container, false); binding.getRoot();
+    ```
 * Build environment: build.gradle: android { ... dataBinding { enabled = true } }
 
 # ViewModels and LiveData: Patterns + AntiPatterns
@@ -101,6 +117,7 @@ https://medium.com/google-developers/viewmodels-and-livedata-patterns-antipatter
 * Design events as part of the state. 
     Some data should be consumed only once, like Snackbar message, a navigation event or a dialog trigger.
     A solution:
+    ```
     Event<Data> // A wrapper for data that is exposed via a LiveData that represents an event
         private boolean hasBeenHandled = false
         private Data data; // Set data in constructor
@@ -109,8 +126,10 @@ https://medium.com/google-developers/viewmodels-and-livedata-patterns-antipatter
             hasBeenHandled = true; return data;
         Data peek() // Returns the content, even if it's already been handled
             return data
-* ViewModel may be leaked if data layer holds a reference to it. 
-    ViewModel observes data repo as LiveData: LiveData<Repo> repo = Transformations.switchMap(repoIdLiveData, repoId -> {...})
+    ```
+* ViewModel may be leaked if data layer holds a reference to it.  
+    - ViewModel observes data repo as LiveData:   
+        LiveData<Repo> repo = Transformations.switchMap(repoIdLiveData, repoId -> {...})
 * Can extend LiveData to start data listening: 
     onActive() { start listening on some data}
     onInactive() { stop listening }
@@ -121,6 +140,7 @@ https://medium.com/google-developers/viewmodels-and-livedata-patterns-antipatter
     - DAO: Contains the methods used for accessing the database
     - Entity: Represents a table within the database
 * Sample: 
+    ```
     @Entity public class User
         @PrimaryKey private int uid;
         @ColumnInfo(name="first_name") private String firstName;
@@ -133,20 +153,21 @@ https://medium.com/google-developers/viewmodels-and-livedata-patterns-antipatter
     public abstract class AppDatabase extends RoomDatabase
         abstract UserDao userDao();
     AppDatabase db = Room.databaseBuilder(context, AppDatabase.class, "database-name").build();
+    ```
 
 # Dagger
 * Dependency provider: 
-    Classes annotated with @Module are responsible for providing objects which can be injected. 
-    Such classes define methods annotated with @Provides. 
-    The returned objects from these methods are available for dependency injection.
-* Dependency consumer: 
-    The @Inject annotation is used to define a dependency.
+    - Classes annotated with @Module are responsible for providing objects which can be injected. 
+    - Such classes define methods annotated with @Provides. 
+    - The returned objects from these methods are available for dependency injection.
+* Dependency consumer:  
+    - The @Inject annotation is used to define a dependency.
 * Connecting consumer and producer: 
-    A @Component annotated interface defines the connection between the provider of objects (modules) and the objects which express a dependency. 
-    The class for this connection is generated by the Dagger.
-* DaggerComponent.builder() // Auto generate Dagger+Component
-    .mainModule(new MainModule(this)) // Set the module object with additional parameter
-    .build().inject(this); // @Inject attributes will be provided by MainModule
+    - A @Component annotated interface defines the connection between the provider of objects (modules) and the objects which express a dependency. 
+    - The class for this connection is generated by the Dagger.
+* DaggerComponent.builder() // Auto generate Dagger+Component  
+    .mainModule(new MainModule(this)) // Set the module object with additional parameter  
+    .build().inject(this); // @Inject attributes will be provided by MainModule  
 
 # Google MVP samples
 https://github.com/googlesamples/android-architecture
@@ -156,6 +177,7 @@ https://github.com/googlesamples/android-architecture
     - View: Contains almost no logic; converts the presenter's commands to UI actions, listens for user actions and then passes to presenter
     - Activity creates View and Presenter. Fragment implements View
     - Structure
+    ```
     interface XXXContract // Just hold view and presenter, defines the connection
         interface View extends BaseView<Presenter>
         interface Presenter extends BasePresenter
@@ -163,6 +185,7 @@ https://github.com/googlesamples/android-architecture
         void setPresenter(T presenter)
     interface BasePresenter
         void start(); // Just do initialization
+    ```
 * todo-mvp-clean
     - Clean architecture
     - MVP: Model View Presenter pattern from the base sample.
@@ -170,60 +193,71 @@ https://github.com/googlesamples/android-architecture
     - Repository: Repository pattern from the base sample.
     - Use cases define the operations that the app needs. Good for reuse and maintenance. Used Command pattern
     - Structure
-    abstract class UseCase<Q extends UseCase.RequestValue, P extends UseCase.ResponseValue>
-        executeUseCase(RequestValue q)
-        interface UseCaseCallback<R>
-            void onSuccess(R response)
-            void onError(e)
-    interface UseCaseScheduler
-        void execute(Runnable r)
-         <V extends UseCase.ResponseValue> void notifyResponse(final V response, final UseCase.UseCaseCallback<V> useCaseCallback)
-         <V extends UseCase.ResponseValue> void onError( final UseCase.UseCaseCallback<V> useCaseCallback)
-    // A scheduler implementation, using thread pool to execute use cases and Handler to post notifications in UI thread
-    class UseCaseThreadPoolScheduler implements UseCaseScheduler 
-    // Presenter operates the tasks and display the result
+        ```
+        abstract class UseCase<Q extends UseCase.RequestValue, P extends UseCase.ResponseValue>
+            executeUseCase(RequestValue q)
+            interface UseCaseCallback<R>
+                void onSuccess(R response)
+                void onError(e)
+            interface UseCaseScheduler
+                void execute(Runnable r)
+                    <V extends UseCase.ResponseValue> void notifyResponse(final V response, final UseCase.UseCaseCallback<V> useCaseCallback)
+                    <V extends UseCase.ResponseValue> void onError( final UseCase.UseCaseCallback<V> useCaseCallback)
+        // A scheduler implementation, using thread pool to execute use cases and Handler to post notifications in UI thread
+        class UseCaseThreadPoolScheduler implements UseCaseScheduler 
+        // Presenter operates the tasks and display the result
+        ```
 * todo-mvp-dagger
     - Structure
-    class TodoApplication extends Application
-        mRepositoryComponent = DaggerTasksRepositoryComponent.builder().applicationModule(
-                new ApplicationModule((getApplicationContext()))).build();
-    @Module class ApplicationModule
-        @Provides Context provideContext() // Provides application context
-    @Singleton @Component(modules = {TasksRepositoryModule.class, ApplicationModule.class}) 
-    public interface TasksRepositoryComponent // A Model component
-        TasksRepository getTasksRepository()
-    // Some Model classes
-    @Module abstract class TasksRepositoryModule 
-        @Singleton @Binds @Local abstract TasksDataSource provideTasksLocalDataSource(TasksLocalDataSource dataSource)
-        @Singleton @Binds @Remote abstract TasksDataSource provideTasksRemoteDataSource(TasksRemoteDataSource dataSource)
-    @Singleton public class TasksRepository implements TasksDataSource 
-        @Inject TasksRepository(@Remote TasksDataSource tasksRemoteDataSource, @Local TasksDataSource tasksLocalDataSource) // Injection
-    @Singleton public class TasksLocalDataSource implements TasksDataSource 
-        @Inject public TasksLocalDataSource(@NonNull Context context) // Injection
+        ```
+        class TodoApplication extends Application
+            mRepositoryComponent = DaggerTasksRepositoryComponent
+                .builder().applicationModule(
+                    new ApplicationModule((getApplicationContext()))).build();
+        @Module class ApplicationModule
+            @Provides Context provideContext() // Provides application context
+        @Singleton @Component(modules = {TasksRepositoryModule.class, ApplicationModule.class}) 
+        public interface TasksRepositoryComponent // A Model component
+            TasksRepository getTasksRepository()
+        // Some Model classes
+        @Module abstract class TasksRepositoryModule 
+            @Singleton @Binds @Local 
+            abstract TasksDataSource provideTasksLocalDataSource(TasksLocalDataSource dataSource)
+            @Singleton @Binds @Remote 
+            abstract TasksDataSource provideTasksRemoteDataSource(TasksRemoteDataSource dataSource)
+        @Singleton public class TasksRepository implements TasksDataSource 
+            @Inject 
+            TasksRepository(@Remote TasksDataSource tasksRemoteDataSource, @Local TasksDataSource tasksLocalDataSource) // Injection
+        @Singleton public class TasksLocalDataSource implements TasksDataSource 
+            @Inject 
+            public TasksLocalDataSource(@NonNull Context context) // Injection
+        ```
 * todo-mvp-rxjava
     - Structure
-    interface BasePresenter
-        void subscribe()
-        void unsubscribe()
-    class Presenter
-        private CompositeSubscription mSubscriptions
-            @Override public void subscribe() 
-                if (!isNewTask() && mIsDataMissing) 
-                    mSubscriptions.add(mTasksRepository.getTask(mTaskId)
-                        .subscribeOn(mSchedulerProvider.computation()).observeOn(mSchedulerProvider.ui())
-                        .subscribe(onNextTask, onErrorTask);
-            @Override public void unsubscribe() 
-                mSubscriptions.clear();
-    // Fragment onResume subscribe, onPause unsubscribe
-    class TasksRepository // Data
-        @Override public Observable<Task> getTask(String taskId)
-            if (cachedTask != null) return Observable.just(cachedTask)
-            Observable<Task> localTask = ...
-            Observable<Task> remoteTask = ...
-            return Observable.concat(localTask, remoteTask).first();
+        ```
+        interface BasePresenter
+            void subscribe()
+            void unsubscribe()
+        class Presenter
+            private CompositeSubscription mSubscriptions
+                @Override public void subscribe() 
+                    if (!isNewTask() && mIsDataMissing) 
+                        mSubscriptions.add(mTasksRepository.getTask(mTaskId)
+                            .subscribeOn(mSchedulerProvider.computation()).observeOn(mSchedulerProvider.ui())
+                            .subscribe(onNextTask, onErrorTask);
+                @Override public void unsubscribe() 
+                    mSubscriptions.clear();
+        // Fragment onResume subscribe, onPause unsubscribe
+        class TasksRepository // Data
+            @Override public Observable<Task> getTask(String taskId)
+                if (cachedTask != null) return Observable.just(cachedTask)
+                Observable<Task> localTask = ...
+                Observable<Task> remoteTask = ...
+                return Observable.concat(localTask, remoteTask).first();
+        ```
 * todo-mvvm-live
-    View: Use data binding
-    ViewModel: Use ObservableXXX for auto data binding
+    - View: Use data binding
+    - ViewModel: Use ObservableXXX for auto data binding
 
 
 
