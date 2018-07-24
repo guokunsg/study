@@ -37,6 +37,10 @@
     void handleMessage(android.os.Message msg) // User defined function
     boolean post(Runnable r) // Will put Runnable in msg.callback
     ```
+* There are similar Looper, Handler, Message implementations in native code part, but not directly connected to Java part
+* MessageQueue
+    - Have native implementation. Queue is shared between native and java layer
+    - Native layer can also write to MessageQueue and has a **higher** processing priority
 
 # AsyncTask
 * Constructor
