@@ -1,7 +1,7 @@
 # Android Binder
 Notes for http://gityuan.com/2015/10/31/binder-prepare/ Based on Android 6.0
 
-![alt text](binder.jpg "Title")
+![alt text](images/binder.jpg "Binder")
 
 # Binder原理
 * 非共享内存的用户空间进程利用进程间可共享的内核内存空间来完成底层通信工作
@@ -268,6 +268,12 @@ Client                    Bind Driver                     Service
         }
     }
     ```
+
+# Binder权限管理
+* clearCallingIdentity：
+    清空远程调用端的uid和pid，用当前本地进程的uid和pid替代
+* restoreCallingIdentity:
+    恢复远程调用端的uid和pid信息，正好是clearCallingIdentity的反过程
 
 # Binder使用
 * 底层方式实现：http://gityuan.com/2015/11/22/binder-use/
