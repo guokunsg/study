@@ -259,7 +259,9 @@ https://github.com/googlesamples/android-architecture
     - View: Use data binding
     - ViewModel: Use ObservableXXX for auto data binding
 
-
+# Guide to App Architecture 
+A sample of Retrofit2, Room, ViewModel
+https://developer.android.com/jetpack/docs/guide
 
 
 
