@@ -1,0 +1,105 @@
+/* CSS Syntax: selector { declaration; declaration; } */
+
+/* Selectors */
+p { text-align: center; } /* Element selector */
+#para1 { text-align: center; } /* ID selector starts with a # */
+.center { text-align: center; } /* Class selector starts with . */
+p.center { text-align: center; } /* <p> elements with class = "center" */
+/* An element can refer to more than one class <p class = "center large" refers to center and large */
+h1, h2 { text-align: center; } /* Group selectors by , */
+
+body { background-color: lightblue }
+
+/* CSS margin properties are used to create space around elements, outside of any defined borders */
+span { margin-left: 5px; margin-right: 5px; }
+/* Shorthand property: padding: top right bottom left */
+/* margin: auto : Horizontally center the element within its container */
+/* margin-left: inherit : Left margin inherited from the parent element */
+/* Margin Collapse: Top and bottom margins of elements are sometimes collapsed into a single margin that is equal to the largest of the two margins.
+                 if bottom is 20 and top is 50, the margin is 50 instead of 70 */
+
+/* CSS padding properties are used to generate space around an element's content, inside of any defined borders. */
+/* If an element has a specified width, the padding added to that element will be added to the total width of the element */
+/* Padding properties can have values: length (px, pt, cm), % (% of the container), inherit (inherit from parent) */
+
+/* CSS width and height. auto (default), length (px, cm), % (% of container) */
+/* max-width property is used to set the maximum width of an element. */
+
+/* CSS box model: From inner to outer: content -> padding -> border -> margin */
+/* When setting the width and height of an element, just set the width and height of the content area. Full size including padding, border and margin */
+
+/* CSS outline: A drawn around elements, outside the borders to make the element 'stand out' */ 
+.box_model { background-color: DodgerBlue; border: 5px dotted red; outline: 5px dashed green;
+    outline-offset: 15px; /* outline-offset property adds space between an outline and the edge/border of an element */
+}
+
+/* CSS Layout - 
+display property
+    Block-level elements: Always starts on a new line and takes up the full width available
+        Examples: <div><h1>-<h6><p><form><header><footer><section>
+    Inline elements: Does not start on a new line and only takes up as much width as necessary
+        Examples: <span><a><img>
+    display:none; to hide element. display:gone; hide the element but still taking the space
+    display:block; Changes inline element to a block element. display:inline changes block element to inline 
+position property
+    static: static positioned elements are not affected by the top, bottom, left and right properties. HTML elements are positioned static by default
+    relative: positioned relative to its normal position. 
+        Setting t/r/b/l props of a relatively-positioned element will cause it to be adjusted away from its normal position.
+    fixed: positioned relative to the viewport, always stays in the same place even if the page is scrolled
+    absolute: positioned relative to the nearest positioned ancestor. If no positioned ancestors, use the document body and moves along with scrolling
+    sticky: positioned based on the user's scroll position. Toggles between relative and fixed, depending on the scroll position
+    Use z-index for overlapping orders*/
+div.fixed {  position: fixed; bottom: 0; right: 0; width: 400px; height: 100px; border: 3px solid #73AD21; }
+div.absolute { position: absolute; top: 30px; right: 0; width: 300px; height: 50px; border: 3px solid #73AD21; }
+div.sticky { position: -webkit-sticky; position: sticky; top: 0; width: 20%; padding: 5px; background-color: #cae8ca; border: 2px solid #4CAF50; }
+/*overflow property
+    Specifies whether to clip content or to add scrollbars when the content is too big to fit in a specified area
+    visible: default. Not clipped, renders outside the box      hidden: clipped     scroll: clipped with scrollbar      auto: add scrollbar when necessary
+float property: specifies how an element should float
+clear property: specifies what element can float and on which side */
+ul.nav_menu { list-style-type: none; margin: 0; padding: 0; overflow: hidden; background-color: #333; }
+ul.nav_menu li { float: left; }
+ul.nav_menu li a { display: inline-block; color: white; text-align: center; padding: 14px 16px; text-decoration: none; }
+ul.nav_menu li a:hover { background-color: #111; }
+
+/* CSS Combinators is something that explains the relationship between the selectors 
+descendant selector (space): matches all elements that are descendants of a specified element
+child selector (>): selects all elements that are the immediate children of a specified element
+adjacent sibling selector (+): selects all elements that are the adjacent siblings of a specified element (immediately after)
+general sibling selector (~): selects all elements that are siblings of a specified element */
+/* CSS Pseudo-classes is used to define a special state of an element
+    syntax: selector:pseudo-class { property: value; }    a:hover { color: #ff00ff; }
+    properties: :link, :visited, hover, active, first-child, etc */
+/* CSS pseudo-elements is used to style specified parts of an element
+    syntax: selector::pseudo-element { property: value; }   Note: double colon
+    properties: ::first-line, ::first-letter, ::before(insert some content before an element), ::after, etc*/
+/* opacity property specifies the opacity/transparency of an element */
+/* CSS attribute selector: style HTML elements that have specific attributes or attribute values
+syntax: selector[attribute] { }     operators: = ~= |= $= *= */
+/* CSS Counters are like "variables", values can be incremented by CSS rules. Can be used for automatic numbering */ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

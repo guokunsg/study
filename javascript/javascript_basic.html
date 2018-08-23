@@ -3,14 +3,91 @@
 <head>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
+    <!-- Three ways to insert CSS. External, Internal and Inline -->
+    <!-- External style sheet-->
+    <link rel="stylesheet" type="text/css" href="css_basic.css"/>
+    <!-- Internal style -->
+    <style> h1 { text-align: center; } </style>
+    <!-- If some properties have been defined for the same selector (element) in different style sheets, 
+        the value from the last read style sheet will be used. -->
+    <!-- Cascading order: 1. Inline style 2. External and internal style sheet (In the head) 3. Browser default -->
 </head>
 
 <body>
-    <p>Code is inside javascript_basic.js</p>
-    <p>There are some output in the console</p>
     <!-- Reference external script -->
     <script src="javascript_basic.js"> 
         // If src is set, content is ignored
     </script>
+
+    <!-- Inline CSS style -->
+    <p style="text-align: center;">Inline CSS style</p>
+    <p>
+        <!-- Colors -->
+        <span style="background-color:DodgerBlue">Background color</span>
+        <span style="color:Tomato">Text color</span>
+        <span style="background-color:rgb(255, 99, 71);">rgb</span>
+        <span style="background-color:#ff6347;">#ff6347</span>
+        <span style="background-color:hsl(9, 100%, 64%);">hsl</span>
+        <span style="background-color:rgba(255, 99, 71, 0.5);">rgba</span>
+        <span style="background-color:hsla(9, 100%, 64%, 0.5);">hsla</span> 
+    </p>
+    <p>
+        <span style="background-image: url('paper.gif'); margin-right: 50px;">Background Image</span>
+        <!-- Property values: background-color background-image background-repeat background-attachment background-posisition -->
+        <span style="background:#ff6347 url('paper.gif') no-repeat right top; margin-right: 50px">Background - Shorthand property</span>
+        <span style="border:2px solid Violet; border-radius: 5px;">Border</span>
+
+        <span class="box_model">Box model</span>
+    </p>
+    <div class="fixed">This div element has position: fixed; 
+        <div class="absolute">This div element is a child with position: absolute</div>
+    </div>
+    <div class="sticky">This div element has position: sticky; </div>
+
+    <p>Some links for reference</p>
+    <!-- Use float to create navigation menu -->
+    <ul class="nav_menu">
+        <li><a href="https://www.w3schools.com/css/css_align.asp">Alignment</a></li>
+        <li><a href="https://www.w3schools.com/css/css_navbar.asp">Navigation bar</a></li>
+        <li><a href="https://www.w3schools.com/css/css_dropdowns.asp">Dropdowns</a></li>
+        <li><a href="https://www.w3schools.com/css/css_image_gallery.asp">Image Gallery</a></li>
+        <li><a href="https://www.w3schools.com/css/css_website_layout.asp">Website Layout</a></li>
+        <li style="float:right"><a href="#about">About</a></li>
+    </ul>
+    
+    <div style="padding-bottom:2000px"></div>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
