@@ -1,16 +1,19 @@
 # Android App Launch Process
 
 # Application start
-* Go to android.app.ActivityThread.main()
+* Go to [android.app.ActivityThread.main()](#at-m)
 
 # Activity start
-* Go to com.android.launcher3.Launcher.startActivitySafely()
+* Go to [com.android.launcher3.Launcher.startActivitySafely()](#l-sas)
 
 # Involved classes implementation (Android 8.0)
+Latest Android has changed. No LAUNCH_ACTIVITY but RELAUNCH_ACTIVITY with life cycle state
 ## android.app.ActivityThread
 * This manages the execution of the main thread in an application process, scheduling and executing activities, broadcasts, and other operations on it as the activity manager requests.
-* public static void main(): 
+* https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/app/ActivityThread.java
+* <a name="at-m" id="at-m"> main() </a>: Calls [attach()](#at-a)
     ```
+    class ActivityThread
     public static void main(String[] args) {
         // CloseGuard defaults to true and can be quite spammy.  We
         // disable it here, but selectively enable it later (via
@@ -26,7 +29,7 @@
 
         Looper.prepareMainLooper();
         ActivityThread thread = new ActivityThread();
-        thread.attach(false);
+    >>> thread.attach(false);   
         if (sMainThreadHandler == null) {
             sMainThreadHandler = thread.getHandler();
         }
@@ -36,8 +39,9 @@
         throw new RuntimeException("Main thread loop unexpectedly exited");
     }
     ```
- * attach(): Called by main(), Calls ActivityManagerService.attachApplication()
+ * <a name="at-a" id="at-a"> attach() </a>: Called by [main()](#at-main), Calls [ActivityManagerService.attachApplication()](#ams-aa)
     ```
+    class ActivityThread
     public void attach(boolean system) {
         ...
         if (system) {
@@ -54,112 +58,45 @@
             ...
             final IActivityManager mgr = ActivityManager.getService();
             try {
-                mgr.attachApplication(mAppThread);
+    >>>         mgr.attachApplication(mAppThread);
             } catch (RemoteException ex) {
                 throw ex.rethrowFromSystemServer();
             }
             ...
         }
     }
+    ```   
+* <a name="at-hla" id="at-hla"> handleLaunchActivity() </a>: Called by [H.LAUNCH_ACTIVITY](#aath-sm) from [ApplicationThread.scheduleLaunchActivity](#aat-sla), Calls [performLaunchActivity](#at-pla) [handleResumeActivity](#at-hra)  
     ```
-* ActivityThread.ApplicationThread extends IApplicationThread.Stub  
-    - scheduleLaunchActivity(): Called by ActivityStackSupervisor.realStartActivityLocked(), 
-    ```
-    public final void scheduleLaunchActivity(Intent intent, IBinder token, int ident,
-        ActivityInfo info, Configuration curConfig, Configuration overrideConfig,
-        CompatibilityInfo compatInfo, String referrer, IVoiceInteractor voiceInteractor,
-        int procState, Bundle state, PersistableBundle persistentState,
-        List<ResultInfo> pendingResults, List<ReferrerIntent> pendingNewIntents,
-        boolean notResumed, boolean isForward, ProfilerInfo profilerInfo) {
-        updateProcessState(procState, false);
-        ActivityClientRecord r = new ActivityClientRecord();
-        r.token = token;
-        r.ident = ident;
-        ...
-        updatePendingConfiguration(curConfig);
-        sendMessage(H.LAUNCH_ACTIVITY, r);
-    }
-    ```
-    - bindApplication(): Called by ActivityManagerService.attachApplicationLocked(), 
-    ```
-    public final void bindApplication(String processName, ApplicationInfo appInfo,
-                List<ProviderInfo> providers, ComponentName instrumentationName,
-                ProfilerInfo profilerInfo, Bundle instrumentationArgs,
-                IInstrumentationWatcher instrumentationWatcher,
-                IUiAutomationConnection instrumentationUiConnection, int debugMode,
-                boolean enableBinderTracking, boolean trackAllocation,
-                boolean isRestrictedBackupMode, boolean persistent, Configuration config,
-                CompatibilityInfo compatInfo, Map services, Bundle coreSettings,
-                String buildSerial) {
-            if (services != null) {
-                // Setup the service cache in the ServiceManager
-                ServiceManager.initServiceCache(services);
-            }
-            setCoreSettings(coreSettings);
-            AppBindData data = new AppBindData();
-            // Fill in data with input parameters
-            ...
-            sendMessage(H.BIND_APPLICATION, data);
-        }
-    ```
-* sendMessage(): Called by ActivityThread.ApplicationThread.scheduleLaunchActivity(), Calls H.sendMessage()
-    ```
-    final H mH = new H();
-    private void sendMessage(int what, Object obj, int arg1, int arg2, boolean async) {
-        ...
-        Message msg = Message.obtain(); 
-        msg.what = what; msg.obj = obj; msg.arg1 = arg1; msg.arg2 = arg2;
-        if (async) {
-            msg.setAsynchronous(true);
-        }
-        mH.sendMessage(msg);
-    }
-    ```
-* H: Called by sendMessage()
-    ```
-    private class H extends Handler {
-        public static final int LAUNCH_ACTIVITY         = 100;
-        public static final int PAUSE_ACTIVITY          = 101;
-        public static final int PAUSE_ACTIVITY_FINISHING= 102;
-        public static final int STOP_ACTIVITY_SHOW      = 103;
-        ...
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case LAUNCH_ACTIVITY:
-                    final ActivityClientRecord r = (ActivityClientRecord) msg.obj;
-                    r.loadedApk = getLoadedApkNoCheck(r.activityInfo.applicationInfo, r.compatInfo);
-                    handleLaunchActivity(r, null, "LAUNCH_ACTIVITY");
-                    break;
-                case BIND_APPLICATION:
-                    AppBindData data = (AppBindData)msg.obj;
-                    handleBindApplication(data);
-                    break;
-                ...
-            }
-            Object obj = msg.obj;
-            if (obj instanceof SomeArgs) {
-                ((SomeArgs) obj).recycle();
-            }
-        }
-    }
-    ```
-* handleLaunchActivity(): Called by H.handleMessage
-    ```
+    class ActivityThread
     private void handleLaunchActivity(ActivityClientRecord r, Intent customIntent, String reason) {
         ...
-        Activity a = performLaunchActivity(r, customIntent);
+    >>> Activity a = performLaunchActivity(r, customIntent);
         if (a != null) {
             r.createdConfig = new Configuration(mConfiguration);
             reportSizeConfigurations(r);
             Bundle oldState = r.state;
-            handleResumeActivity(r.token, false, r.isForward,
+    >>>     handleResumeActivity(r.token, false, r.isForward,
                     !r.activity.mFinished && !r.startsNotResumed, r.lastProcessedSeq, reason);
             ...
         } else { ...}
     }
     ```
-* performLaunchActivity(): Called by handleLaunchActivity(), Calls Instrumentation.callActivityOnCreate()
+* <a name="at-hra" id="at-hra"> handleResumeActivity() </a>: Called by [handleLaunchActivity](#at-hla), Calls [performResumeActivity](#at-pra)
     ```
+    class ActivityThread
+    final void handleResumeActivity(IBinder token, boolean clearHide, boolean isForward, boolean reallyResume) {
+        ...
+    >>> ActivityClientRecord r = performResumeActivity(token, clearHide);
+        if (r != null) {
+            final Activity a = r.activity;
+            ... Setup decor window ...
+        }
+    }
+    ```
+* <a name="at-pla" id="at-pla"> performLaunchActivity() </a>: Called by [handleLaunchActivity()](#at-hla), Calls [Instrumentation.callActivityOnCreate()](#i-caoc)
+    ```
+    class ActivityThread
     private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {
         ActivityInfo aInfo = r.activityInfo;
         if (r.loadedApk == null) {
@@ -200,9 +137,9 @@
                         r.referrer, r.voiceInteractor, window, r.configCallback);
                 ...
                 if (r.isPersistable()) {
-                    mInstrumentation.callActivityOnCreate(activity, r.state, r.persistentState);
+    >>>             mInstrumentation.callActivityOnCreate(activity, r.state, r.persistentState);
                 } else {
-                    mInstrumentation.callActivityOnCreate(activity, r.state);
+    >>>             mInstrumentation.callActivityOnCreate(activity, r.state);
                 }
                 ...
             }
@@ -212,8 +149,44 @@
         return activity;
     }
     ```
-* handleBindApplication(): Called by H.handleMessage(), Application is created by LoadedApk.makeApplication()
+* <a name="at-pra" id="at-pra"> performResumeActivity() </a>: Called by [handleResumeActivity](#at-hra), Calls Activity.performResume 
     ```
+    class ActivityThread
+    public ActivityClientRecord performResumeActivity(IBinder token, boolean finalStateRequest, String reason) {
+        final ActivityClientRecord r = mActivities.get(token);
+        if (r.getLifecycleState() == ON_RESUME) {
+            if (!finalStateRequest) {
+                final RuntimeException e = new IllegalStateException("Trying to resume activity which is already resumed");
+            }
+            return null;
+        }
+        if (finalStateRequest) {
+            r.hideForNow = false;
+            r.activity.mStartedActivity = false;
+        }
+        try {
+            r.activity.onStateNotSaved();
+            r.activity.mFragments.noteStateNotSaved();
+            checkAndBlockForNetworkAccess();
+            if (r.pendingIntents != null) {
+                deliverNewIntents(r, r.pendingIntents);
+                r.pendingIntents = null;
+            }
+            if (r.pendingResults != null) {
+                deliverResults(r, r.pendingResults, reason);
+                r.pendingResults = null;
+            }
+    >>>     r.activity.performResume(r.startsNotResumed, reason);
+            r.state = null;
+            r.persistentState = null;
+            r.setState(ON_RESUME);
+        } catch (Exception e) { ... }
+        return r;
+    }
+    ```
+* <a name="at-hba" id="at-hba"> handleBindApplication() </a>: Called by [H.handleMessage()](#aath-sm), Application is created by [LoadedApk.makeApplication()](#la-ma)
+    ```
+    class ActivityThread
     private void handleBindApplication(AppBindData data) {
         ... 
         // Instrumentation info affects the class loader, so load it before setting up the app context.
@@ -242,7 +215,7 @@
         // If the app is being launched for full backup or restore, bring it up in
         // a restricted environment with the base application class.
         ... 
-        Application app = data.loadedApk.makeApplication(data.restrictedBackupMode, null);
+    >>> Application app = data.loadedApk.makeApplication(data.restrictedBackupMode, null);
         ... 
         try {
             // android.app.Instrumentation.onCreate() does nothing
@@ -256,9 +229,94 @@
     }
     ```
 
+### ActivityThread.ApplicationThread extends IApplicationThread.Stub  
+* <a name="aat-sla" id="aat-sla"> scheduleLaunchActivity() </a>: Called by [ActivityStackSupervisor.realStartActivityLocked()](#ass-rsal), Calls [H.LAUNCH_ACTIVITY](#aath-sm)
+    ```
+    class ApplicationThread
+    public final void scheduleLaunchActivity(Intent intent, IBinder token, int ident,
+        ActivityInfo info, Configuration curConfig, Configuration overrideConfig,
+        CompatibilityInfo compatInfo, String referrer, IVoiceInteractor voiceInteractor,
+        int procState, Bundle state, PersistableBundle persistentState,
+        List<ResultInfo> pendingResults, List<ReferrerIntent> pendingNewIntents,
+        boolean notResumed, boolean isForward, ProfilerInfo profilerInfo) {
+        updateProcessState(procState, false);
+        ActivityClientRecord r = new ActivityClientRecord();
+        r.token = token;
+        r.ident = ident;
+        ...
+        updatePendingConfiguration(curConfig);
+    >>> sendMessage(H.LAUNCH_ACTIVITY, r);
+    }
+    ```
+* <a name="aat-ba" id="aat-ba"> bindApplication() </a>: Called by [ActivityManagerService.attachApplicationLocked()](#ams-aal), Calls [H.BIND_APPLICATION](#aath-sm)
+    ```
+    class ApplicationThread
+    public final void bindApplication(String processName, ApplicationInfo appInfo,
+                List<ProviderInfo> providers, ComponentName instrumentationName,
+                ProfilerInfo profilerInfo, Bundle instrumentationArgs,
+                IInstrumentationWatcher instrumentationWatcher,
+                IUiAutomationConnection instrumentationUiConnection, int debugMode,
+                boolean enableBinderTracking, boolean trackAllocation,
+                boolean isRestrictedBackupMode, boolean persistent, Configuration config,
+                CompatibilityInfo compatInfo, Map services, Bundle coreSettings,
+                String buildSerial) {
+        if (services != null) {
+            // Setup the service cache in the ServiceManager
+            ServiceManager.initServiceCache(services);
+        }
+        setCoreSettings(coreSettings);
+        AppBindData data = new AppBindData();
+        // Fill in data with input parameters
+        ...
+    >>> sendMessage(H.BIND_APPLICATION, data);
+    }
+    ```
+* <a name="aat-sm" id="aat-sm"> sendMessage() </a>: Called by ActivityThread.ApplicationThread.scheduleLaunchActivity(), Calls H.sendMessage()
+    ```
+    class ApplicationThread
+    final H mH = new H();
+    private void sendMessage(int what, Object obj, int arg1, int arg2, boolean async) {
+        ...
+        Message msg = Message.obtain(); 
+        msg.what = what; msg.obj = obj; msg.arg1 = arg1; msg.arg2 = arg2;
+        if (async) {
+            msg.setAsynchronous(true);
+        }
+    >>  mH.sendMessage(msg);
+    }
+    ```
+* <a name="aath-sm" id="aath-sm"> H </a>: Called by [ActivityThread.ApplicationThread.bindApplication](#aat-ba), Calls [ActivityThread.handleBindApplication](#at-hba), [ActivityThread.handleLaunchActivity](#at-hla)
+    ```
+    private class H extends Handler {
+        public static final int LAUNCH_ACTIVITY         = 100;
+        public static final int PAUSE_ACTIVITY          = 101;
+        public static final int PAUSE_ACTIVITY_FINISHING= 102;
+        public static final int STOP_ACTIVITY_SHOW      = 103;
+        ...
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case LAUNCH_ACTIVITY:
+                    final ActivityClientRecord r = (ActivityClientRecord) msg.obj;
+                    r.loadedApk = getLoadedApkNoCheck(r.activityInfo.applicationInfo, r.compatInfo);
+        >>>         handleLaunchActivity(r, null, "LAUNCH_ACTIVITY");
+                    break;
+                case BIND_APPLICATION:
+                    AppBindData data = (AppBindData)msg.obj;
+        >>>         handleBindApplication(data);
+                    break;
+                ...
+            }
+            Object obj = msg.obj;
+            if (obj instanceof SomeArgs) {
+                ((SomeArgs) obj).recycle();
+            }
+        }
+    }
+    ```
+
 ## android.app.LoadedApk 
 * Local state maintained about a currently loaded .apk.
-* makeApplication(): Called by ActivityThread.ApplicationThread.handleBindApplication(), Calls Instrumentation.newApplication() to create Application
+* <a name="la-ma" id="la-ma"> makeApplication() </a>: Called by [ActivityThread.handleBindApplication()](#at-hba), Calls [Instrumentation.newApplication()](#i-na) to create Application
     ```
     public Application makeApplication(boolean forceDefaultAppClass, Instrumentation instrumentation) {
         if (mApplication != null) {
@@ -275,7 +333,7 @@
                 initializeJavaContextClassLoader();
             }
             ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this);
-            app = mActivityThread.mInstrumentation.newApplication(
+    >>>     app = mActivityThread.mInstrumentation.newApplication(
                     cl, appClass, appContext);
             appContext.setOuterContext(app);
         } catch (Exception e) { ... }
@@ -293,7 +351,7 @@
     ```
 
 ## com.android.launcher3.Launcher
-* startActivitySafely(): Calls Activity.startActivity
+* <a name="l-sas" id="l-sas"> startActivitySafely() </a>: Called by Laucher, Calls [Activity.startActivity](#a-sa)
     ```
     public boolean startActivitySafely(View v, Intent intent, ItemInfo item)
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -303,7 +361,7 @@
        } else if (user == null || user.equals(Process.myUserHandle())) {
            // Could be launching some bookkeeping activity
            //** Launcher is an Activity, will call Activity.startActivity()
-           startActivity(intent, optsBundle); 
+    >>>    startActivity(intent, optsBundle); 
        } else {
            LauncherAppsCompat.getInstance(this).startActivityForProfile(
                    intent.getComponent(), user, intent.getSourceBounds(), optsBundle);
@@ -315,28 +373,41 @@
     ```
 
 ## android.app.Activity
-* startActivity(): Called by Launcher
+* <a name="a-sa" id="a-sa"> startActivity() </a>: Called by [Launcher.startActivitySafely](#l-sas)
     ```
     public void startActivity(Intent intent) {
 		startActivityForResult(intent, -1);
 	}
     ```
- * startActivityForResult: Calls Instrumentation.execStartActivity
+ * <a name="a-safr" id="a-safr"> startActivityForResult </a>: Calls [Instrumentation.execStartActivity](#i-esa)
     ```
     public void startActivityForResult(@RequiresPermission Intent intent, int requestCode, @Nullable Bundle options) {
         ...
         options = transferSpringboardActivityOptions(options);
         // mMainThread is ActivityThread. ApplicationThread is a Binder
-        Instrumentation.ActivityResult ar = mInstrumentation.execStartActivity(
+    >>> Instrumentation.ActivityResult ar = mInstrumentation.execStartActivity(
                 this, mMainThread.getApplicationThread(), mToken, this,
                 intent, requestCode, options);
+        ...
+    }
+    ```
+* <a name="a-pc" id="a-pc"> performCreate() </a>: Called by [Instrumentation.callActivityOnCreate()](#i-caoc)
+    ```
+    final void performCreate(Bundle icicle, PersistableBundle persistentState) {
+        mCanEnterPictureInPicture = true;
+        restoreHasCurrentPermissionRequest(icicle);
+        if (persistentState != null) {
+            onCreate(icicle, persistentState);
+        } else {
+            onCreate(icicle);
+        }
         ...
     }
     ```
 
 ## android.app.Instrumentation
 * Doc: Base class for implementing application instrumentation code.  When running with instrumentation turned on, this class will be instantiated for you before any of the application code, allowing you to monitor all of the interaction the system has with the application.  An Instrumentation implementation is described to the system through an AndroidManifest.xml instrumentation tag.
-* execStartActivity(): Called by Activity.startActivityForResult, Calls ActivityManager.getService().startActivity()
+* <a name="i-esa" id="i-esa"> execStartActivity() </a>: Called by [Activity.startActivityForResult](#a-safr), Calls [ActivityManager.getService()](#am-gs) then calls [ActivityManagerService.startActivity()](#ams-sa)
     ```
     public ActivityResult execStartActivity(
         Context who, IBinder contextThread, IBinder token, String target, 
@@ -346,7 +417,7 @@
         try {
             intent.migrateExtraStreamToClipData();
             intent.prepareToLeaveProcess(who);
-            int result = ActivityManager.getService()
+    >>>     int result = ActivityManager.getService()
                 .startActivity(whoThread, who.getBasePackageName(), intent,
                         intent.resolveTypeIfNeeded(who.getContentResolver()),
                         token, target, requestCode, 0, null, options);
@@ -356,7 +427,7 @@
     }
     ```
 
- * callActivityOnCreate(): Called by ActivityThread.performLaunchActivity(), Calls Activity.performCreate()
+* <a name="i-caoc" id="i-caoc"> callActivityOnCreate() </a>: Called by [ActivityThread.performLaunchActivity()](#at-pla), Calls [Activity.performCreate()](#a-pc)
     ```
     public void callActivityOnCreate(Activity activity, Bundle icicle) {
         prePerformCreate(activity);
@@ -364,7 +435,7 @@
         postPerformCreate(activity);
     }
     ```
-* newApplication(): Called by LoadedApk.makeApplication()
+* <a name="i-na" id="i-na"> newApplication() </a>: Called by [LoadedApk.makeApplication()](#la-ma)
     ```
     public Application newApplication(ClassLoader cl, String className, Context context)
             throws InstantiationException, IllegalAccessException, ClassNotFoundException {
@@ -380,7 +451,7 @@
 
 ## android.app.ActivityManager
 * Doc: This class gives information about, and interacts with, activities, services, and the containing process.
-* getService(): Called by Instrumentation.execStartActivity(), Calls ActivityManagerService.startActivity()
+* <a name="am-gs" id="am-gs"> getService() </a>: Called by [Instrumentation.execStartActivity()](#i-esa), Calls [ActivityManagerService.startActivity()](#ams-sa)
     ```
     public static IActivityManager getService() {
         return IActivityManagerSingleton.get();
@@ -402,18 +473,20 @@
     ```
 
 ## com.android.server.am.ActivityManagerService
-* startActivity(): Called by ActivityManager singleton, Calls startActivityAsUser()
+* <a name="ams-sa" id="ams-sa"> startActivity() </a>: Called by [Instrumentation.execStartActivity()](#i-esa) through ActivityManager singleton, Calls [startActivityAsUser()](#ams-saau)
     ```
+    class ActivityManagerService
     public final int startActivity(IApplicationThread caller, String callingPackage,
         Intent intent, String resolvedType, IBinder resultTo, String resultWho, int requestCode,
         int startFlags, ProfilerInfo profilerInfo, Bundle bOptions) {
-        return startActivityAsUser(caller, callingPackage, intent, resolvedType, resultTo,
+    >>> return startActivityAsUser(caller, callingPackage, intent, resolvedType, resultTo,
             resultWho, requestCode, startFlags, profilerInfo, bOptions,
             UserHandle.getCallingUserId());
     }
     ```
- * startActivityAsUser(): Calls ActivityStarter.startActivityMayWait()
+ * <a name="ams-saau" id="ams-saau"> startActivityAsUser() </a>: Called by [startActivity](#ams-sa), Calls [ActivityStarter.startActivityMayWait()](#as-samw)
     ```
+    class ActivityManagerService
     /*void enforceNotIsolatedCaller(String caller) {
         if (UserHandle.isIsolated(Binder.getCallingUid())) {
             throw new SecurityException("Isolated process not allowed to call " + caller);
@@ -426,30 +499,32 @@
         userId = mUserController.handleIncomingUser(Binder.getCallingPid(), 
             Binder.getCallingUid(), userId, false, ALLOW_FULL_ONLY, "startActivity", null);
         // TODO: Switch to user app stacks here.
-        return mActivityStarter.startActivityMayWait(caller, -1, callingPackage, intent,
+    >>> return mActivityStarter.startActivityMayWait(caller, -1, callingPackage, intent,
             resolvedType, null, null, resultTo, resultWho, requestCode, startFlags,
             profilerInfo, null, null, bOptions, false, userId, null, "startActivityAsUser");
     }
     ```
-* attachApplication(): Called by ActivityThread.attach()
+* <a name="ams-aa" id="ams-aa"> attachApplication() </a>: Called by [ActivityThread.attach()](#at-a"), Calls [attachApplicationLocked](#ams-aal)
     ```
+    class ActivityManagerService
     public final void attachApplication(IApplicationThread thread) {
         synchronized (this) {
             int callingPid = Binder.getCallingPid();
             final long origId = Binder.clearCallingIdentity();
-            attachApplicationLocked(thread, callingPid);
+    >>>     attachApplicationLocked(thread, callingPid);
             Binder.restoreCallingIdentity(origId);
         }
     }
     ```
- * attachApplicationLocked(): Called by attachApplication(), Calls ActivityThread.ApplicationThread.bindApplication()
+ * <a name="ams-aal" id="ams-aal"> attachApplicationLocked() </a>: Called by [attachApplication()](#ams-aa), Calls [ActivityThread.ApplicationThread.bindApplication()](#aat-ba)
     ```
+    class ActivityManagerService
     private final boolean attachApplicationLocked(IApplicationThread thread, int pid) {
         ProcessRecord app;
         // Find the application record that is being attached
         // Update app data
         ... 
-        thread.bindApplication(processName, appInfo, providers, app.instrumentationClass,
+    >>> thread.bindApplication(processName, appInfo, providers, app.instrumentationClass,
                     profilerInfo, app.instrumentationArguments, app.instrumentationWatcher,
                     app.instrumentationUiAutomationConnection, testMode, enableOpenGlTrace,
                     isRestrictedBackupMode || !normalMode, app.persistent,
@@ -492,8 +567,9 @@
 
 ## com.android.server.am.ActivityStarter
 * Controller for interpreting how and then launching activities. This class collects all the logic for determining how an intent and flags should be turned into an activity and associated task and stack.
-* startActivityMayWait(): Called by ActivityManagerService.startActivityAsUser, Calls startActivityLocked()
+* <a name="as-samw" id="as-samw"> startActivityMayWait() </a>: Called by [ActivityManagerService.startActivityAsUser](#ams-saau), Calls [startActivityLocked()](#as-sal)
     ```
+    class ActivityStarter
     final int startActivityMayWait(IApplicationThread caller, int callingUid,
         String callingPackage, Intent intent, String resolvedType,
         IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor,
@@ -512,7 +588,7 @@
         // Collect information about the target of the Intent.
         ActivityInfo aInfo = mSupervisor.resolveActivity(intent, rInfo, startFlags, profilerInfo);
         ...
-        int res = startActivityLocked(caller, intent, ephemeralIntent, resolvedType,
+    >>> int res = startActivityLocked(caller, intent, ephemeralIntent, resolvedType,
                 aInfo, rInfo, voiceSession, voiceInteractor,
                 resultTo, resultWho, requestCode, callingPid,
                 callingUid, callingPackage, realCallingPid, realCallingUid, startFlags,
@@ -522,8 +598,9 @@
         return res;
     }
     ```
-* startActivityLocked(): Calls startActivity()
+* <a name="as-sal" id="as-sal"> startActivityLocked() </a>: Called by [startActivityAsUser](#as-samw), Calls [startActivity()](#as-sa)
     ```
+    class ActivityStarter
     int startActivityLocked(IApplicationThread caller, Intent intent, Intent ephemeralIntent,
             String resolvedType, ActivityInfo aInfo, ResolveInfo rInfo,
             IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor,
@@ -532,7 +609,7 @@
             ActivityOptions options, boolean ignoreTargetSecurity, boolean componentSpecified,
             ActivityRecord[] outActivity, TaskRecord inTask, String reason) {
         ...
-        mLastStartActivityResult = startActivity(caller, intent, ephemeralIntent, resolvedType,
+    >>> mLastStartActivityResult = startActivity(caller, intent, ephemeralIntent, resolvedType,
                 aInfo, rInfo, voiceSession, voiceInteractor, resultTo, resultWho, requestCode,
                 callingPid, callingUid, callingPackage, realCallingPid, realCallingUid, startFlags,
                 options, ignoreTargetSecurity, componentSpecified, mLastStartActivityRecord,
@@ -541,8 +618,9 @@
         return mLastStartActivityResult != START_ABORTED ? mLastStartActivityResult : START_SUCCESS;
     }
     ```
-* startActivity(): Calls another startActivity()
+* <a name="as-sa" id="as-sa"> startActivity() </a>: Called by [startActivityLocked](#as-sal) Calls another [startActivity()](#as-sa2)
     ```
+    class ActivityStarter
     private int startActivity(IApplicationThread caller, Intent intent, Intent ephemeralIntent,
         String resolvedType, ActivityInfo aInfo, ResolveInfo rInfo,
         IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor,
@@ -605,12 +683,13 @@
         }
         ...
         doPendingActivityLaunchesLocked(false);
-        return startActivity(r, sourceRecord, voiceSession, voiceInteractor, startFlags, true,
+    >>> return startActivity(r, sourceRecord, voiceSession, voiceInteractor, startFlags, true,
                 options, inTask, outActivity);
     }
     ```
- * startActivty(): Calls startActivityUnchecked()
+ * <a name="as-sa2" id="as-sa2"> startActivty() </a>: Called by [startActivity()](#as-sa), Calls [startActivityUnchecked()](#as-sau)
     ```
+    class ActivityStarter
     private int startActivity(final ActivityRecord r, ActivityRecord sourceRecord,
         IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor,
         int startFlags, boolean doResume, ActivityOptions options, TaskRecord inTask,
@@ -618,16 +697,16 @@
         int result = START_CANCELED;
         try {
             mService.mWindowManager.deferSurfaceLayout();
-            result = startActivityUnchecked(r, sourceRecord, voiceSession, voiceInteractor,
+    >>>     result = startActivityUnchecked(r, sourceRecord, voiceSession, voiceInteractor,
                     startFlags, doResume, options, inTask, outActivity);
         } finally { ... }
         ...
         return result;
     }
     ```
-* startActivityUnChecked():  
-        Handles different launch mode and launch flags
+* <a name="as-sau" id="as-sau"> startActivityUnChecked() </a>: Called by [startActivity()](#as-sa2), Handles different launch mode and launch flags, then calls [ActivityStackSupervisor.resumeFocusedStackTopActivityLocked](#ass-rfstal)
     ```
+    class ActivityStarter
     private int startActivityUnchecked(final ActivityRecord r, ActivityRecord sourceRecord,
         IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor,
         int startFlags, boolean doResume, ActivityOptions options, TaskRecord inTask,
@@ -646,7 +725,7 @@
         if (dontStart) {
             topStack.mLastPausedActivity = null;
             if (mDoResume) {
-                mSupervisor.resumeFocusedStackTopActivityLocked();
+    >>>         mSupervisor.resumeFocusedStackTopActivityLocked();
             }
             ActivityOptions.abort(mOptions);
             if ((mStartFlags & START_FLAG_ONLY_IF_NEEDED) != 0) {
@@ -695,7 +774,7 @@
                 if (mTargetStack.isFocusable() && !mSupervisor.isFocusedStack(mTargetStack)) {
                     mTargetStack.moveToFront("startActivityUnchecked");
                 }
-                mSupervisor.resumeFocusedStackTopActivityLocked(mTargetStack, mStartActivity, mOptions);
+        >>>     mSupervisor.resumeFocusedStackTopActivityLocked(mTargetStack, mStartActivity, mOptions);
             }
         } else {
             mTargetStack.addRecentActivityLocked(mStartActivity);
@@ -706,8 +785,9 @@
     ```
 
 ## com.android.server.am.ActivityStackSupervisor
-* resumeFocusedStackTopActivityLocked(): Called by ActivityStarter.startActivityUnchecked, Calls ActivityStack.resumeTopActivityUncheckedLocked()
+* <a name="ass-rfstal" id="ass-rfstal"> resumeFocusedStackTopActivityLocked() </a>: Called by [ActivityStarter.startActivityUnchecked](#as-sau), Calls [ActivityStack.resumeTopActivityUncheckedLocked()](#ask-rta)
     ```
+    class ActivityStackSupervisor
     boolean resumeFocusedStackTopActivityLocked(
         ActivityStack targetStack, ActivityRecord target, ActivityOptions targetOptions) {
         if (!readyToResume()) {
@@ -715,12 +795,12 @@
         }
         if (targetStack != null && isFocusedStack(targetStack)) {
             // Resume as focused
-            return targetStack.resumeTopActivityUncheckedLocked(target, targetOptions);
+    >>>     return targetStack.resumeTopActivityUncheckedLocked(target, targetOptions);
         }
     
         final ActivityRecord r = mFocusedStack.topRunningActivityLocked();
         if (r == null || r.state != RESUMED) {
-            mFocusedStack.resumeTopActivityUncheckedLocked(null, null);
+    >>>     mFocusedStack.resumeTopActivityUncheckedLocked(null, null);
         } else if (r.state == RESUMED) {
             // Kick off any lingering app transitions form the MoveTaskToFront operation.
             mFocusedStack.executeAppTransition(targetOptions);
@@ -728,8 +808,9 @@
         return false;
     }
     ```
-* startSpecificActivityLocked(): Called by ActivityStack.resumeTopActivityInnerLocked(), Calls realStartActivityLocked()
+* <a name="ass-ssal" id="ass-ssal"> startSpecificActivityLocked() </a>: Called by [ActivityStack.resumeTopActivityInnerLocked()](#ask-rti), Calls [realStartActivityLocked()](#ass-rsal)
     ```
+    class ActivityStackSupervisor
     void startSpecificActivityLocked(ActivityRecord r, boolean andResume, boolean checkConfig) {
         // Is this activity's application already running?
         ProcessRecord app = mService.getProcessRecordLocked(r.processName,
@@ -742,7 +823,7 @@
                     app.addPackage(r.info.packageName, r.info.applicationInfo.versionCode,
                             mService.mProcessStats);
                 }
-                realStartActivityLocked(r, app, andResume, checkConfig);
+        >>>     realStartActivityLocked(r, app, andResume, checkConfig);
                 return;
             } catch (RemoteException e) { ... } }
         }
@@ -750,13 +831,14 @@
             "activity", r.intent.getComponent(), false, false, true);
     }
     ```
-* realStartActivityLocked(): Called by startSpecificActivityLocked(), Calls ActivityThread.ApplicationThread.scheduleLaunchActivity()
+* <a name="ass-rsal" id="ass-rsal"> realStartActivityLocked() </a>: Called by [startSpecificActivityLocked()](#ass-ssal), Calls [ActivityThread.ApplicationThread.scheduleLaunchActivity()](#aat-sla)
     ```
+    class ActivityStackSupervisor
     final boolean realStartActivityLocked(ActivityRecord r, ProcessRecord app,
           boolean andResume, boolean checkConfig) throws RemoteException {
         ...
         // app.thread is IApplicationThread implemented as ActivityThread.ApplicationThread
-        app.thread.scheduleLaunchActivity(new Intent(r.intent), r.appToken,
+    >>> app.thread.scheduleLaunchActivity(new Intent(r.intent), r.appToken,
             System.identityHashCode(r), r.info, new Configuration(mService.mConfiguration),
             new Configuration(task.mOverrideConfig), r.compat, r.launchedFromPackage,
             task.voiceInteractor, app.repProcState, r.icicle, r.persistentState, results,
@@ -768,8 +850,9 @@
 
 ## com.android.server.am.ActivityStack
 * State and management of a single stack of activities.
-* resumeTopActivityUncheckedLocked(): Called by ActivityStackSupervisor.resumeFocusedStackTopActivityLocked()
+* <a name="ask-rta" id="ask-rta"> resumeTopActivityUncheckedLocked() </a>: Called by [ActivityStackSupervisor.resumeFocusedStackTopActivityLocked()](#ass-rfstal), Calls [resumeTopActivityInnerLocked](#ask-rti)
     ```
+    class ActivityStack
     boolean resumeTopActivityUncheckedLocked(ActivityRecord prev, ActivityOptions options) {
         ...
         result = resumeTopActivityInnerLocked(prev, options);
@@ -777,8 +860,9 @@
         return result;
     }
     ```
-* resumeTopActivityInnerLocked(): Calls ActivityStackSupervisor.startSpecificActivityLocked()
+* <a name="ask-rti" id="ask-rti"> resumeTopActivityInnerLocked() </a>: Called by [resumeTopActivityUncheckedLocked](#ask-rta), Calls [ActivityStackSupervisor.startSpecificActivityLocked()](#ass-ssal)
     ```
+    class ActivityStack
     private boolean resumeTopActivityInnerLocked(ActivityRecord prev, ActivityOptions options) {
         ...
         mStackSupervisor.startSpecificActivityLocked(next, true, true);
@@ -787,17 +871,4 @@
     }
     ```
    
-## android.app.Activity
-* performCreate(): Called by Instrumentation.callActivityOnCreate()
-    ```
-    final void performCreate(Bundle icicle, PersistableBundle persistentState) {
-        mCanEnterPictureInPicture = true;
-        restoreHasCurrentPermissionRequest(icicle);
-        if (persistentState != null) {
-            onCreate(icicle, persistentState);
-        } else {
-            onCreate(icicle);
-        }
-        ...
-    }
-    ```
+
